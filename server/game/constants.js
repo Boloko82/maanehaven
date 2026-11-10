@@ -1,9 +1,10 @@
 // All tuning values for Månehaven. Units: world units (960x540), seconds.
+import { LAYOUT } from '../../public/layout.js';
 export const DT = 1 / 30;
 export const NIGHT_LENGTH = 720;            // 12 minutes (spec)
 
 // Gardeners
-export const WALK_SPEED = 180;
+export const WALK_SPEED = LAYOUT.walkSpeed;
 export const REACH = 40;                    // how close to a bed, box, well, lantern, altar or item you must be
 
 // Flowers (spec): grow = seconds of growth while moist; value = dust

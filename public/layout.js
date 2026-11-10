@@ -4,6 +4,7 @@ export const LAYOUT = Object.freeze({
   width: 960,
   height: 540,
   bounds: { left: 30, top: 130, right: 930, bottom: 515 },
+  walkSpeed: 180, // world units per second, used by the server and by the browser's own prediction
   // Beds open in id order: 0-5 from the start, 6-11 bought in the shop.
   beds: [
     { id: 0, x: 360, y: 260 }, { id: 1, x: 480, y: 260 }, { id: 2, x: 600, y: 260 },

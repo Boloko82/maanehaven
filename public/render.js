@@ -3,6 +3,7 @@
 import { LAYOUT } from './layout.js';
 import { FLOWER_LOOK } from './flowers.js';
 import * as sound from './sound.js';
+import { stepPrediction } from './predict.js';
 
 const W = LAYOUT.width, H = LAYOUT.height;
 const DELAY = 150;
@@ -15,15 +16,16 @@ const INK = '#17141f';
 let canvas = null, ctx = null, bg = null, raf = 0, ro = null;
 let getSnaps = () => [], youId = null, colourOf = () => '#f2a07b';
 let lastSeq = 0, toasts = [];
+let getKeys = () => ({}), pred = null, lastFrame = 0;
 let view = { sc: 1, ox: 0, oy: 0, d: 1 };
 
 export function isRunning() { return !!raf; }
 export function notify(text) { toast(text, performance.now()); }
 
-export function start(c, snapsFn, you, colourFn) {
+export function start(c, snapsFn, you, colourFn, keysFn = () => ({})) {
   canvas = c; ctx = c.getContext('2d');
-  getSnaps = snapsFn; youId = you; colourOf = colourFn;
-  lastSeq = 0; toasts = [];
+  getSnaps = snapsFn; youId = you; colourOf = colourFn; getKeys = keysFn;
+  lastSeq = 0; toasts = []; pred = null; lastFrame = 0;
   ro = new ResizeObserver(resize); ro.observe(canvas); resize();
   raf = requestAnimationFrame(frame);
 }
@@ -147,7 +149,9 @@ function frame(now) {
   for (let i = 0; i < snaps.length; i++) if (snaps[i].at <= rt) ai = i;
   const A = snaps[Math.max(0, ai)], B = snaps[Math.min(snaps.length - 1, ai + 1)];
   const k = ai < 0 || A === B ? 0 : Math.min(1, (rt - A.at) / Math.max(1, B.at - A.at));
-  const s = blend(A.s, B.s, k);
+  // a copy, so drawing never changes the stored server states
+  const s = { ...blend(A.s, B.s, k) };
+  predictMe(s, snaps[snaps.length - 1].s, now);
   if (snaps[0].seq > lastSeq + snaps.length) lastSeq = snaps[0].seq - 1;
   for (const sn of snaps) if (sn.seq > lastSeq && sn.at <= rt) { lastSeq = sn.seq; sn.e.forEach((e) => onEvent(e, now)); }
 
@@ -168,6 +172,22 @@ function frame(now) {
   drawWishes(s);
   ctx.restore();
   drawText(s, now);
+}
+
+// Your own gardener is drawn where your keys put it right now (see predict.js);
+// everyone else is drawn slightly in the past, blended between server states.
+function predictMe(s, newest, now) {
+  const dt = lastFrame ? Math.min(0.1, (now - lastFrame) / 1000) : 0;
+  lastFrame = now;
+  const server = newest.players.find((p) => p.id === youId);
+  const i = s.players.findIndex((p) => p.id === youId);
+  if (!server || i < 0 || s.phase !== 'playing') { pred = null; return; }
+  if (!pred) pred = { x: server.x, y: server.y };
+  const keys = getKeys();
+  pred = stepPrediction(pred, keys, dt, server);
+  const fx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0), fy = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+  const facing = fx || fy ? { x: fx / Math.hypot(fx, fy), y: fy / Math.hypot(fx, fy) } : s.players[i].facing;
+  s.players = s.players.map((p, j) => (j === i ? { ...p, x: pred.x, y: pred.y, facing } : p));
 }
 
 // ---------- events ----------

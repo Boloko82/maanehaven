@@ -75,7 +75,7 @@ export function show(name) {
   if (name === 'game') {
     document.activeElement?.blur?.();
     if (!countdownRunning) { countdownRunning = true; requestAnimationFrame(countdownLoop); }
-    if (!render.isRunning()) render.start(game.canvas, getSnaps, game.you, colourOf);
+    if (!render.isRunning()) render.start(game.canvas, getSnaps, game.you, colourOf, () => input.getKeys());
   } else {
     render.stop();
   }
